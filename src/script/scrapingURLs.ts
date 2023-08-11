@@ -25,7 +25,8 @@ const getAllPageURLs = async (
   const currentURLs = currentPageURLs.map((path) => {
     return /^(https|http):\/\//.test(path) ? path : (URL.endsWith('/') ? URL.slice(0, -1) : URL) + path;
   });
-  const uniqueURLs = Array.from(new Set(currentURLs));
+  const uniqueURLs = new Set<string>(currentURLs);
+
 
   console.info('Found URLs: ' + uniqueURLs.toString());
 
