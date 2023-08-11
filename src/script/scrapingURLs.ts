@@ -35,7 +35,7 @@ const getAllPageURLs = async (
     URL,
     uniqueURLs,
     waitSec,
-    [],
+    new Set<string>(),
   );
 };
 
