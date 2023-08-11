@@ -1,37 +1,34 @@
 import { launch, Page } from 'puppeteer';
 
-export const scrapingURL = async (
-  URL: string,
+export const scrapeURLs = async (
+  initialURL: string,
   waitSec?: number,
 ): Promise<string[]> => {
-  const browser = await launch({ headless: 'new' });
+  const browser = await launch({ headless: true }); // You can adjust the 'headless' option here
   const page = await browser.newPage();
 
-  console.info('Start Scraping: ' + URL);
+  console.info('Start Scraping: ' + initialURL);
 
-  const allPageURLs = await getAllPageURLs(page, URL, waitSec ? waitSec : 3);
+  const allPageURLs = await getAllPageURLs(page, initialURL, waitSec ? waitSec : 3);
   await browser.close();
   return allPageURLs;
 };
 
 const getAllPageURLs = async (
   page: Page,
-  URL: string,
+  initialURL: string,
   waitSec: number,
 ): Promise<string[]> => {
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(initialURL, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(waitSec * 1000);
-  const currentPageURLs = await getCurrentPageURLs(page);
-  const currentURLs = currentPageURLs.map((path) => {
-    return /^(https|http):\/\//.test(path) ? URL + '/' : URL + path;
-  });
-  const uniqueURLs = Array.from(new Set(currentURLs));
+  const currentPageURLs = await getCurrentPageURLs(page, initialURL);
+  const uniqueURLs = Array.from(new Set(currentPageURLs));
 
   console.info('Found URLs: ' + uniqueURLs.toString());
 
   const allPageURLs = await getCurrentPageURLsRecursive(
     page,
-    URL,
+    initialURL,
     uniqueURLs,
     waitSec,
     [],
@@ -41,7 +38,7 @@ const getAllPageURLs = async (
 
 const getCurrentPageURLsRecursive = async (
   page: Page,
-  URL: string,
+  initialURL: string,
   obtainedURLs: string[],
   waitSec: number,
   allPageURLs: string[],
@@ -58,15 +55,12 @@ const getCurrentPageURLsRecursive = async (
     waitUntil: 'domcontentloaded',
   });
   await page.waitForTimeout(waitSec * 1000);
-  const currentPageURLs = await getCurrentPageURLs(page);
-  const currentURLs = currentPageURLs.map((path) => {
-    return /^(https|http):\/\//.test(path) ? URL : URL + path;
-  });
-  const uniqueURLs = Array.from(new Set(currentURLs));
+  const currentPageURLs = await getCurrentPageURLs(page, initialURL);
+  const uniqueURLs = Array.from(new Set(currentPageURLs));
   allPageURLs.concat(uniqueURLs);
   return await getCurrentPageURLsRecursive(
     page,
-    URL,
+    initialURL,
     obtainedURLs,
     waitSec,
     allPageURLs,
@@ -74,17 +68,27 @@ const getCurrentPageURLsRecursive = async (
   );
 };
 
-const getCurrentPageURLs = async (page: Page): Promise<string[]> => {
+const getCurrentPageURLs = async (page: Page, baseURL: string): Promise<string[]> => {
   const bodyHandle = await page.$('body');
-  return await page.evaluate((body) => {
+  return await page.evaluate((body, baseURL) => {
     if (!body) {
       return [];
     }
     const elements = Array.from(body.querySelectorAll('a'));
     return elements
       .map((element: Element) => {
-        return element?.getAttribute('href');
+        let url = element?.getAttribute('href');
+        if (!url) {
+          return '';
+        }
+        if (/^(https|http):\/\//.test(url)) {
+          return url;
+        } else if (url.startsWith('/')) {
+          return baseURL + url;
+        } else {
+          return baseURL + '/' + url;
+        }
       })
       .filter((url) => url) as string[];
-  }, bodyHandle);
+  }, bodyHandle, baseURL);
 };
