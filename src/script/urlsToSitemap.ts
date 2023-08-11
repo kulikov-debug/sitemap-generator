@@ -7,7 +7,7 @@ export const urlsToSitemap = async (
   allURLs: string[],
 ): Promise<void> => {
   const links = allURLs.map((url) => {
-    return { url, changefreq: 'monthly', priority: 0.5 };
+    return { url };
   });
   const stream = new SitemapStream({ hostname: URL });
   const data = await streamToPromise(Readable.from(links).pipe(stream));
