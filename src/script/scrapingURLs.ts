@@ -41,36 +41,42 @@ const getAllPageURLs = async (
 const getCurrentPageURLsRecursive = async (
   page: Page,
   URL: string,
-  obtainedURLs: string[],
+  obtainedURLs: Set<string>,
   waitSec: number,
-  allPageURLs: string[] = [],
-  count: number = 0,
+  scrapedURLs: Set<string> = new Set(),
+  allPageURLs: Set<string> = new Set(),
 ): Promise<string[]> => {
-  if (obtainedURLs.length === count) {
-    return allPageURLs;
+  const currentURL = Array.from(obtainedURLs)[scrapedURLs.size];
+  if (!currentURL) {
+    return Array.from(allPageURLs);
   }
 
-  console.info('Scraping: ' + obtainedURLs[count]);
+  console.info('Scraping: ' + currentURL);
 
-  await page.goto(obtainedURLs[count], { waitUntil: 'domcontentloaded' });
+  await page.goto(currentURL, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(waitSec * 1000);
+
+  scrapedURLs.add(currentURL);
+
   const currentPageURLs = await getCurrentPageURLs(page);
   const currentURLs = currentPageURLs.map((path) => {
     return /^(https|http):\/\//.test(path) ? path : (URL.endsWith('/') ? URL.slice(0, -1) : URL) + path;
   });
-  const uniqueURLs = Array.from(new Set(currentURLs));
-  allPageURLs = [...allPageURLs, ...uniqueURLs];
 
-  // Here, we merge the obtainedURLs with the newly found URLs, while also removing duplicates.
-  const nextURLsToScrape = Array.from(new Set([...obtainedURLs, ...uniqueURLs]));
+  currentURLs.forEach((url) => {
+    allPageURLs.add(url);
+    if (!scrapedURLs.has(url)) {
+      obtainedURLs.add(url);
+    }
+  });
 
   return await getCurrentPageURLsRecursive(
     page,
     URL,
-    nextURLsToScrape,
+    obtainedURLs,
     waitSec,
+    scrapedURLs,
     allPageURLs,
-    count + 1,
   );
 };
 
