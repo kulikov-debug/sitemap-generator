@@ -71,7 +71,8 @@ const getCurrentPageURLsRecursive = async (
 };
 
 const getCurrentPageURLs = async (page: Page): Promise<string[]> => {
-  return await page.$$eval('a', anchors => {
-    return anchors.map(anchor => anchor.getAttribute('href')).filter(url => url);
-  });
+  return (await page.$$eval('a', anchors => {
+    return anchors.map(anchor => anchor.getAttribute('href'));
+  })).filter((url): url is string => url !== null);
 };
+
