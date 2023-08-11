@@ -43,11 +43,11 @@ const getCurrentPageURLsRecursive = async (
   URL: string,
   obtainedURLs: string[],
   waitSec: number,
-  allPageURLs: string[],
+  allPageURLs: string[] = [],
   count: number = 0,
 ): Promise<string[]> => {
   if (obtainedURLs.length === count) {
-    return allPageURLs.length ? allPageURLs : obtainedURLs;
+    return allPageURLs;
   }
 
   console.info('Scraping: ' + obtainedURLs[count]);
@@ -60,15 +60,20 @@ const getCurrentPageURLsRecursive = async (
   });
   const uniqueURLs = Array.from(new Set(currentURLs));
   allPageURLs = [...allPageURLs, ...uniqueURLs];
+
+  // Here, we merge the obtainedURLs with the newly found URLs, while also removing duplicates.
+  const nextURLsToScrape = Array.from(new Set([...obtainedURLs, ...uniqueURLs]));
+
   return await getCurrentPageURLsRecursive(
     page,
     URL,
-    obtainedURLs,
+    nextURLsToScrape,
     waitSec,
     allPageURLs,
     count + 1,
   );
 };
+
 
 const getCurrentPageURLs = async (page: Page): Promise<string[]> => {
   return (await page.$$eval('a', anchors => {
